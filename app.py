@@ -4,19 +4,22 @@ from groq import Groq
 # Page Configuration
 st.set_page_config(page_title="AI Content Assistant", page_icon="✍️", layout="centered")
 
-# Custom CSS for Sleek UI
+# Custom CSS for Sleek UI & Centered Bigger Header
 st.markdown("""
     <style>
     .main-header {
-        font-size: 2.2rem;
-        font-weight: 700;
+        font-size: 3rem;
+        font-weight: 800;
         color: #1E293B;
-        margin-bottom: 0px;
+        text-align: center;
+        margin-top: -10px;
+        margin-bottom: 5px;
     }
     .sub-header {
-        font-size: 1rem;
+        font-size: 1.2rem;
         color: #64748B;
-        margin-bottom: 20px;
+        text-align: center;
+        margin-bottom: 30px;
     }
     .content-box {
         background-color: #F8FAFC;
@@ -24,11 +27,12 @@ st.markdown("""
         border-radius: 10px;
         border: 1px solid #E2E8F0;
         margin-top: 15px;
+        white-space: pre-wrap;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# App Header
+# App Header (Centered & Larger)
 st.markdown("<p class='main-header'>✍️ AI Content Assistant</p>", unsafe_allow_html=True)
 st.markdown("<p class='sub-header'>Generate tailored social media posts, blogs, and scripts instantly.</p>", unsafe_allow_html=True)
 
@@ -93,25 +97,32 @@ if submit_button:
         try:
             client = Groq(api_key=api_key)
             
+            # Strict prompt to prevent excessive emojis
             prompt = f"""
-            You are an expert content creator. Generate a high-quality piece of content based on these inputs:
+            You are an expert copywriter. Generate high-quality content based on these parameters:
             - Content Type: {content_type}
             - Platform: {platform}
             - Topic: {topic}
             - Target Audience: {target_audience}
             - Tone: {tone}
 
-            Make sure the format and length suit the specified platform perfectly.
+            Formatting Rules:
+            1. Keep the output clean, professional, and well-structured with clear line breaks.
+            2. Use emojis VERY minimally and strictly where relevant (maximum 2-4 emojis in the entire response). Do NOT overload sentences with emojis.
+            3. Make sure length and formatting align with best practices for {platform}.
             """
 
             with st.spinner("⚡ Generating high-speed content via Groq..."):
                 response = client.chat.completions.create(
                     model="openai/gpt-oss-120b",
                     messages=[
-                        {"role": "system", "content": "You are a helpful and professional copywriter."},
+                        {
+                            "role": "system", 
+                            "content": "You are a professional copywriter who writes concise, high-converting content with minimal and tasteful emoji usage."
+                        },
                         {"role": "user", "content": prompt}
                     ],
-                    temperature=0.7
+                    temperature=0.6  # Reduced temperature slightly for more structured output
                 )
             
             generated_text = response.choices[0].message.content
