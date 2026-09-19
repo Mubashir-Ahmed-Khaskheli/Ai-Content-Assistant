@@ -7,16 +7,24 @@ st.set_page_config(page_title="AI Content Assistant", page_icon="✍️", layout
 st.title("✍️ AI Content Assistant")
 st.write("Generate tailored content for social media, blogs, emails, and more.")
 
-# API Key handling
-api_key = None
+# Sidebar Settings & Key Management
+with st.sidebar:
+    st.header("Settings")
+    
+    # Priority: Secrets pehle check honge, agar na mile toh sidebar input use hoga
+    secret_key = ""
+    if "GROQ_API_KEY" in st.secrets:
+        secret_key = st.secrets["GROQ_API_KEY"]
+    
+    user_api_key = st.text_input(
+        "Enter Groq API Key", 
+        value=secret_key, 
+        type="password",
+        help="Agar Secrets me key add ki hai toh ye auto-fill ho jayegi."
+    )
+    st.caption("Get a free key at [console.groq.com](https://console.groq.com)")
 
-if "GROQ_API_KEY" in st.secrets:
-    api_key = st.secrets["GROQ_API_KEY"]
-else:
-    with st.sidebar:
-        st.header("Settings")
-        api_key = st.text_input("Enter Groq API Key", type="password")
-        st.caption("Get a free key at [console.groq.com](https://console.groq.com)")
+api_key = user_api_key.strip()
 
 # Input Form
 with st.form("content_form"):
@@ -42,56 +50,40 @@ with st.form("content_form"):
 
     submit_button = st.form_submit_button("Generate Content")
 
-# List of active models (Fallback order)
-MODELS_TO_TRY = [
-    "llama-3.3-70b-versatile",
-    "llama-3.1-80b-instant",
-    "llama3-8b-8192",
-    "mixtral-8x7b-32768"
-]
-
-# Generation Logic
+# Generation Logic (Directly using openai/gpt-oss-120b)
 if submit_button:
     if not api_key:
-        st.error("Please provide a Groq API key in the sidebar or via Streamlit Secrets.")
+        st.error("Please enter your Groq API Key in the sidebar or add GROQ_API_KEY to Secrets.")
     elif not topic or not target_audience:
         st.warning("Please fill in both the Topic and Target Audience fields.")
     else:
-        client = Groq(api_key=api_key)
-        
-        prompt = f"""
-        You are an expert content creator. Generate a high-quality piece of content based on these inputs:
-        - Content Type: {content_type}
-        - Platform: {platform}
-        - Topic: {topic}
-        - Target Audience: {target_audience}
-        - Tone: {tone}
+        try:
+            client = Groq(api_key=api_key)
+            
+            prompt = f"""
+            You are an expert content creator. Generate a high-quality piece of content based on these inputs:
+            - Content Type: {content_type}
+            - Platform: {platform}
+            - Topic: {topic}
+            - Target Audience: {target_audience}
+            - Tone: {tone}
 
-        Make sure the format and length suit the specified platform perfectly.
-        """
+            Make sure the format and length suit the specified platform perfectly.
+            """
 
-        generated_text = None
-        used_model = None
-        
-        with st.spinner("Generating content..."):
-            for model_name in MODELS_TO_TRY:
-                try:
-                    response = client.chat.completions.create(
-                        model=model_name,
-                        messages=[
-                            {"role": "system", "content": "You are a helpful and professional copywriter."},
-                            {"role": "user", "content": prompt}
-                        ],
-                        temperature=0.7
-                    )
-                    generated_text = response.choices[0].message.content
-                    used_model = model_name
-                    break  # Success ho gaya toh loop stop kar do
-                except Exception as model_error:
-                    continue  # Agar yeh model fail hua, toh agle model par switch kar jao
-
-        if generated_text:
-            st.success(f"Content Generated successfully! (Model: {used_model})")
+            with st.spinner("Generating content using openai/gpt-oss-120b..."):
+                response = client.chat.completions.create(
+                    model="openai/gpt-oss-120b",  # Single model specified without fallback
+                    messages=[
+                        {"role": "system", "content": "You are a helpful and professional copywriter."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.7
+                )
+            
+            generated_text = response.choices[0].message.content
+            
+            st.success("Content Generated successfully!")
             st.markdown("### Generated Content")
             st.write(generated_text)
             
@@ -102,5 +94,6 @@ if submit_button:
                 file_name=f"{content_type.lower().replace(' ', '_')}_content.txt",
                 mime="text/plain"
             )
-        else:
-            st.error("Could not generate content using any of the available Groq models. Please check your API key.")
+
+        except Exception as e:
+            st.error(f"An error occurred while generating content: {str(e)}")
