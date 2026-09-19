@@ -7,7 +7,7 @@ st.set_page_config(page_title="AI Content Assistant", page_icon="✍️", layout
 st.title("✍️ AI Content Assistant")
 st.write("Generate tailored content for social media, blogs, emails, and more.")
 
-# API Key handling: Direct Streamlit Cloud secrets se uthayega, na hone par sidebar dikhayega
+# API Key handling
 api_key = None
 
 if "GROQ_API_KEY" in st.secrets:
@@ -42,6 +42,14 @@ with st.form("content_form"):
 
     submit_button = st.form_submit_button("Generate Content")
 
+# List of active models (Fallback order)
+MODELS_TO_TRY = [
+    "llama-3.3-70b-versatile",
+    "llama-3.1-80b-instant",
+    "llama3-8b-8192",
+    "mixtral-8x7b-32768"
+]
+
 # Generation Logic
 if submit_button:
     if not api_key:
@@ -49,33 +57,41 @@ if submit_button:
     elif not topic or not target_audience:
         st.warning("Please fill in both the Topic and Target Audience fields.")
     else:
-        try:
-            client = Groq(api_key=api_key)
-            
-            prompt = f"""
-            You are an expert content creator. Generate a high-quality piece of content based on these inputs:
-            - Content Type: {content_type}
-            - Platform: {platform}
-            - Topic: {topic}
-            - Target Audience: {target_audience}
-            - Tone: {tone}
+        client = Groq(api_key=api_key)
+        
+        prompt = f"""
+        You are an expert content creator. Generate a high-quality piece of content based on these inputs:
+        - Content Type: {content_type}
+        - Platform: {platform}
+        - Topic: {topic}
+        - Target Audience: {target_audience}
+        - Tone: {tone}
 
-            Make sure the format and length suit the specified platform perfectly.
-            """
+        Make sure the format and length suit the specified platform perfectly.
+        """
 
-            with st.spinner("Generating content..."):
-                response = client.chat.completions.create(
-                    model="llama3-70b-8192",  # Updated working Groq model
-                    messages=[
-                        {"role": "system", "content": "You are a helpful and professional copywriter."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    temperature=0.7
-                )
-            
-            generated_text = response.choices[0].message.content
-            
-            st.success("Content Generated!")
+        generated_text = None
+        used_model = None
+        
+        with st.spinner("Generating content..."):
+            for model_name in MODELS_TO_TRY:
+                try:
+                    response = client.chat.completions.create(
+                        model=model_name,
+                        messages=[
+                            {"role": "system", "content": "You are a helpful and professional copywriter."},
+                            {"role": "user", "content": prompt}
+                        ],
+                        temperature=0.7
+                    )
+                    generated_text = response.choices[0].message.content
+                    used_model = model_name
+                    break  # Success ho gaya toh loop stop kar do
+                except Exception as model_error:
+                    continue  # Agar yeh model fail hua, toh agle model par switch kar jao
+
+        if generated_text:
+            st.success(f"Content Generated successfully! (Model: {used_model})")
             st.markdown("### Generated Content")
             st.write(generated_text)
             
@@ -86,6 +102,5 @@ if submit_button:
                 file_name=f"{content_type.lower().replace(' ', '_')}_content.txt",
                 mime="text/plain"
             )
-
-        except Exception as e:
-            st.error(f"An error occurred: {e}")
+        else:
+            st.error("Could not generate content using any of the available Groq models. Please check your API key.")
