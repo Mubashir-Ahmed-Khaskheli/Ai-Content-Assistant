@@ -36,11 +36,11 @@ st.markdown("""
 st.markdown("<p class='main-header'>✍️ AI Content Assistant</p>", unsafe_allow_html=True)
 st.markdown("<p class='sub-header'>Generate tailored social media posts, blogs, and scripts instantly.</p>", unsafe_allow_html=True)
 
-# Sidebar Settings
+# Sidebar Settings & SECURE API Key Handling
 with st.sidebar:
     st.header("⚙️ Configuration")
     
-    # Safe check for st.secrets
+    # Check secrets for server/local secrets
     secret_key = ""
     try:
         if "GROQ_API_KEY" in st.secrets:
@@ -48,19 +48,24 @@ with st.sidebar:
     except Exception:
         secret_key = ""
     
-    user_api_key = st.text_input(
-        "Groq API Key", 
-        value=secret_key, 
-        type="password",
-        help="Secrets se key auto-fill ho jati hai."
-    )
-    st.caption("Get a free key at [console.groq.com](https://console.groq.com)")
+    # SECURE FIX: Key auto-fill nahi hogi screen/UI par.
+    # User tabhi enter karega jab Secrets me key na mili ho.
+    if secret_key:
+        api_key = secret_key
+        st.success("🔒 API Key automatically loaded securely from environment.")
+    else:
+        user_api_key = st.text_input(
+            "Groq API Key", 
+            type="password",
+            placeholder="Enter your Groq API Key...",
+            help="Get a key at console.groq.com"
+        )
+        api_key = user_api_key.strip()
+        st.caption("Get a free key at [console.groq.com](https://console.groq.com)")
     
     st.divider()
     st.metric(label="Powered By", value="Groq LPU⚡")
     st.caption("Model: `openai/gpt-oss-120b`")
-
-api_key = user_api_key.strip()
 
 # Input Form
 with st.form("content_form"):
@@ -97,7 +102,6 @@ if submit_button:
         try:
             client = Groq(api_key=api_key)
             
-            # Strict prompt to prevent excessive emojis
             prompt = f"""
             You are an expert copywriter. Generate high-quality content based on these parameters:
             - Content Type: {content_type}
@@ -122,7 +126,7 @@ if submit_button:
                         },
                         {"role": "user", "content": prompt}
                     ],
-                    temperature=0.6  # Reduced temperature slightly for more structured output
+                    temperature=0.6
                 )
             
             generated_text = response.choices[0].message.content
