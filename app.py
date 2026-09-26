@@ -48,8 +48,6 @@ with st.sidebar:
     except Exception:
         secret_key = ""
     
-    # SECURE FIX: Key auto-fill nahi hogi screen/UI par.
-    # User tabhi enter karega jab Secrets me key na mili ho.
     if secret_key:
         api_key = secret_key
         st.success("🔒 API Key automatically loaded securely from environment.")
@@ -70,25 +68,36 @@ with st.sidebar:
 # Input Form
 with st.form("content_form"):
     st.subheader("🎯 Content Parameters")
-    col1, col2 = st.columns(2)
     
+    # Row 1: Content Type & Platform
+    col1, col2 = st.columns(2)
     with col1:
         content_type = st.selectbox(
             "Content Type",
             ["Social Media Post", "Blog Post", "Email Newsletter", "Ad Copy", "Video Script"]
         )
+    with col2:
         platform = st.selectbox(
             "Platform",
             ["LinkedIn", "Twitter/X", "Instagram", "Facebook", "Medium", "Email"]
         )
+
+    # Row 2: Tone & Target Audience
+    col3, col4 = st.columns(2)
+    with col3:
         tone = st.selectbox(
             "Tone",
             ["Professional", "Casual", "Persuasive", "Informative", "Humorous", "Witty"]
         )
-
-    with col2:
-        topic = st.text_input("Topic / Main Idea", placeholder="e.g., Remote Work Productivity")
+    with col4:
         target_audience = st.text_input("Target Audience", placeholder="e.g., Software Engineers")
+
+    # Row 3: Topic / Main Idea (Full Width & Larger Box)
+    topic = st.text_area(
+        "Topic / Main Idea", 
+        placeholder="e.g., How remote work increases productivity, reduces stress, and allows better work-life balance...",
+        height=100
+    )
 
     submit_button = st.form_submit_button("🚀 Generate Content", use_container_width=True)
 
